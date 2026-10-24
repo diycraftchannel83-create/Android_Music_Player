@@ -69,7 +69,7 @@ class _PlayerShellState extends State<PlayerShell> {
 
   Future<void> playTrack(int index) async {
     if (localTracks.isEmpty) { await pickTracks(); return; }
-    final safeIndex = index.clamp(0, localTracks.length - 1);
+    final safeIndex = index.clamp(0, localTracks.length - 1).toInt();
     final path = localTracks[safeIndex].path;
     if (path == null) return;
     try {
