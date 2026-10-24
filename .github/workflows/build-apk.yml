@@ -24,6 +24,12 @@ jobs:
           cache: true
       - name: Generate Android project
         run: flutter create --platforms=android --project-name=android_music_player .
+      - name: Set Android app label
+        shell: bash
+        run: |
+          MANIFEST="android/app/src/main/AndroidManifest.xml"
+          sed -i 's/android:label="android_music_player"/android:label="Android Music Player"/' "$MANIFEST"
+          grep -q 'android:label="Android Music Player"' "$MANIFEST"
       - name: Flutter dependencies
         run: flutter pub get
       - name: Analyze
