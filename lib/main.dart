@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:just_audio/just_audio.dart';
 
 void main() => runApp(const AndroidMusicPlayerApp());
 
@@ -47,6 +49,52 @@ class _PlayerShellState extends State<PlayerShell> {
   bool bassEnabled = true;
   double bass = 0.72;
   final bands = <double>[0.72, 0.58, 0.43, 0.50, 0.66];
+  final AudioPlayer audioPlayer = AudioPlayer();
+  final List<PlatformFile> localTracks = <PlatformFile>[];
+  int currentTrack = 0;
+  String? audioError;
+
+  Future<void> pickTracks() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(type: FileType.audio, allowMultiple: true, withData: false);
+      if (result == null) return;
+      final valid = result.files.where((f) => f.path != null).toList();
+      if (!mounted) return;
+      setState(() { localTracks.addAll(valid); audioError = null; });
+      if (localTracks.isNotEmpty && audioPlayer.audioSource == null) await playTrack(0);
+    } catch (e) {
+      if (mounted) setState(() => audioError = 'Tidak dapat membuka file audio: $e');
+    }
+  }
+
+  Future<void> playTrack(int index) async {
+    if (localTracks.isEmpty) { await pickTracks(); return; }
+    final safeIndex = index.clamp(0, localTracks.length - 1);
+    final path = localTracks[safeIndex].path;
+    if (path == null) return;
+    try {
+      await audioPlayer.setFilePath(path);
+      if (!mounted) return;
+      setState(() { currentTrack = safeIndex; playing = true; audioError = null; });
+      await audioPlayer.play();
+    } catch (e) {
+      if (mounted) setState(() => audioError = 'Gagal memutar audio: $e');
+    }
+  }
+
+  Future<void> togglePlayback() async {
+    if (localTracks.isEmpty) { await pickTracks(); return; }
+    if (audioPlayer.playing) {
+      await audioPlayer.pause();
+      if (mounted) setState(() => playing = false);
+    } else {
+      if (audioPlayer.audioSource == null) { await playTrack(currentTrack); }
+      else { await audioPlayer.play(); if (mounted) setState(() => playing = true); }
+    }
+  }
+
+  @override
+  void dispose() { audioPlayer.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
@@ -190,8 +238,8 @@ class _PlayerShellState extends State<PlayerShell> {
                 gradient: LinearGradient(colors: [cyan, violet]),
               ),
               child: IconButton(
-                onPressed: () => setState(() => playing = !playing),
-                icon: Icon(playing ? Icons.pause_rounded : Icons.play_arrow_rounded, color: ink, size: 32),
+                onPressed: togglePlayback,
+                icon: Icon(audioPlayer.playing ? Icons.pause_rounded : Icons.play_arrow_rounded, color: ink, size: 32),
               ),
             ),
             const SizedBox(width: 8),
@@ -307,18 +355,40 @@ class _PlayerShellState extends State<PlayerShell> {
   Widget _library() => ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          const _PageHeading('Your Library', 'All your music in one place'),
+          const _PageHeading('Your Library', 'Play audio files stored on your device'),
           const SizedBox(height: 18),
-          TextField(
-            decoration: InputDecoration(
-              hintText: 'Search songs, albums, artists',
-              prefixIcon: const Icon(Icons.search_rounded),
-              filled: true, fillColor: panel,
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none),
-            ),
+          FilledButton.icon(
+            onPressed: pickTracks,
+            icon: const Icon(Icons.library_add_rounded),
+            label: const Text('Add music files'),
+            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
           ),
-          const SizedBox(height: 22),
-          const _InfoNote('Library integration pending', 'This screen establishes the visual direction. Device audio scanning, metadata, folders, playlists, favourites, and background playback still need to be connected.'),
+          if (audioError != null) ...[
+            const SizedBox(height: 12),
+            _InfoNote('Audio message', audioError!),
+          ],
+          const SizedBox(height: 18),
+          if (localTracks.isEmpty)
+            const _InfoNote('Your library is empty', 'Tap Add music files and select audio files from your device. Playback works for selected local files; equalizer DSP and background playback are not connected yet.')
+          else
+            ...List.generate(localTracks.length, (i) {
+              final track = localTracks[i];
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: ListTile(
+                  tileColor: panel,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                  leading: Icon(i == currentTrack ? Icons.equalizer_rounded : Icons.music_note_rounded, color: i == currentTrack ? cyan : violet),
+                  title: Text(track.name, maxLines: 1, overflow: TextOverflow.ellipsis),
+                  subtitle: Text(track.extension?.toUpperCase() ?? 'AUDIO'),
+                  trailing: IconButton(
+                    icon: const Icon(Icons.play_circle_fill_rounded, color: cyan, size: 30),
+                    onPressed: () => playTrack(i),
+                  ),
+                  onTap: () => playTrack(i),
+                ),
+              );
+            }),
         ],
       );
 
