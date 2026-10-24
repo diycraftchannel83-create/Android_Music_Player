@@ -1,62 +1,42 @@
-name: Build InstaDown APK
+name: Build Android Music Player APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, "rebrand/**"]
   workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
       - name: Setup Java
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
-
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
           flutter-version: "3.35.7"
           channel: stable
           cache: true
-
       - name: Generate Android project
-        run: flutter create --platforms=android --project-name=instadown .
-
-      - name: Restore native MediaStore bridge
-        run: git checkout -- android/app/src/main/kotlin/com/example/instadown/MainActivity.kt
-
-      - name: Enable Android internet permission
-        shell: bash
-        run: |
-          MANIFEST="android/app/src/main/AndroidManifest.xml"
-          grep -q 'android.permission.INTERNET' "$MANIFEST" ||             sed -i '/<manifest[^>]*>/a\    <uses-permission android:name="android.permission.INTERNET"/>' "$MANIFEST"
-          grep -q 'android.permission.INTERNET' "$MANIFEST"
-
+        run: flutter create --platforms=android --project-name=android_music_player .
       - name: Flutter dependencies
         run: flutter pub get
-
       - name: Analyze
         run: flutter analyze
-
       - name: Test
         run: flutter test
-
       - name: Build release APK
         run: flutter build apk --release
-
       - name: Verify release APK
         run: test -s build/app/outputs/flutter-apk/app-release.apk
-
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: instadown-release
+          name: android-music-player-release
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
