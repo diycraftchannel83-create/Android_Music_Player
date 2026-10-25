@@ -47,6 +47,9 @@ class _PlayerShellState extends State<PlayerShell> {
   int tab = 0;
   bool playing = false;
   bool bassEnabled = true;
+  bool surroundEnabled = true;
+  bool effectsEnabled = true;
+  double surroundWidth = 0.70;
   double bass = 0.72;
   final bands = <double>[0.72, 0.58, 0.43, 0.50, 0.66, 0.58, 0.72];
   final AudioPlayer audioPlayer = AudioPlayer();
@@ -416,53 +419,112 @@ class _PlayerShellState extends State<PlayerShell> {
   Widget _bassPage() => ListView(
         padding: const EdgeInsets.all(20),
         children: [
-          const _PageHeading('Super Bass', 'Deep bass. Clean sound.'),
-          const SizedBox(height: 24),
+          const _PageHeading('Bass & Effects', 'Powerful low end. Immersive sound.'),
+          const SizedBox(height: 20),
           Container(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(20),
             decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              gradient: const LinearGradient(colors: [Color(0xFF102A4A), Color(0xFF20113F), Color(0xFF180F2C)]),
+              borderRadius: BorderRadius.circular(26),
+              gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF102A4A), Color(0xFF20113F), Color(0xFF080D1B)]),
               border: Border.all(color: cyan.withValues(alpha: .25)),
             ),
             child: Column(children: [
-              Container(
-                width: 180, height: 180,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(color: cyan.withValues(alpha: .8), width: 2),
-                  boxShadow: [BoxShadow(color: cyan.withValues(alpha: .15), blurRadius: 28, spreadRadius: 8)],
-                ),
-                child: Container(
-                  margin: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: const RadialGradient(colors: [Color(0xFF263C6A), Color(0xFF080B16)]),
-                    border: Border.all(color: violet, width: 3),
-                  ),
-                  child: const Icon(Icons.speaker_rounded, size: 82, color: cyan),
-                ),
-              ),
-              const SizedBox(height: 24),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Super Bass', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: const Text('Bass boost control design'),
+                subtitle: const Text('Deep low-frequency emphasis'),
                 value: bassEnabled,
                 activeThumbColor: cyan,
                 onChanged: (v) => setState(() => bassEnabled = v),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 10),
+              Container(
+                width: 190, height: 190,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(colors: [cyan.withValues(alpha: .20), violet.withValues(alpha: .08), Colors.transparent]),
+                  border: Border.all(color: cyan.withValues(alpha: .55), width: 2),
+                  boxShadow: [BoxShadow(color: cyan.withValues(alpha: .12), blurRadius: 30, spreadRadius: 5)],
+                ),
+                child: Container(
+                  margin: const EdgeInsets.all(17),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const RadialGradient(colors: [Color(0xFF31456F), Color(0xFF080B16)]),
+                    border: Border.all(color: violet, width: 3),
+                  ),
+                  child: const Icon(Icons.speaker_rounded, size: 88, color: cyan),
+                ),
+              ),
+              const SizedBox(height: 20),
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                const Text('Intensity', style: TextStyle(color: Colors.white70)),
+                const Text('Bass intensity', style: TextStyle(color: Colors.white70)),
                 Text('${(bass * 100).round()}%', style: const TextStyle(color: cyan, fontWeight: FontWeight.bold)),
               ]),
               Slider(value: bass, onChanged: bassEnabled ? (v) => setState(() => bass = v) : null),
             ]),
           ),
-          const SizedBox(height: 18),
-          const _InfoNote('Powerful, not distorted', 'The intended implementation should apply bass enhancement through supported Android audio effects, with level limits to reduce clipping and distortion.'),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white10)),
+            child: Column(children: [
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('3D Surround', style: TextStyle(fontWeight: FontWeight.bold)),
+                subtitle: const Text('Wider stereo soundstage'),
+                value: surroundEnabled,
+                activeThumbColor: cyan,
+                onChanged: (v) => setState(() => surroundEnabled = v),
+              ),
+              const Icon(Icons.surround_sound_rounded, size: 72, color: violet),
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                const Text('Width', style: TextStyle(color: Colors.white70)),
+                Text('${(surroundWidth * 100).round()}%', style: const TextStyle(color: cyan)),
+              ]),
+              Slider(value: surroundWidth, onChanged: surroundEnabled ? (v) => setState(() => surroundWidth = v) : null),
+            ]),
+          ),
+          const SizedBox(height: 14),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.white10)),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                title: const Text('Audio Effects', style: TextStyle(fontWeight: FontWeight.bold)),
+                value: effectsEnabled,
+                activeThumbColor: cyan,
+                onChanged: (v) => setState(() => effectsEnabled = v),
+              ),
+              Row(children: [
+                _effectDial('Reverb', 30, violet),
+                _effectDial('Chorus', 20, cyan),
+                _effectDial('Flanger', 15, pink),
+                _effectDial('Delay', 10, violet),
+              ]),
+            ]),
+          ),
+          const SizedBox(height: 14),
+          const _InfoNote('Audio processing status', 'These controls now match the reference design. The local player works, but bass boost, surround, reverb, chorus, flanger and delay remain visual controls until native Android audio effects are connected and tested.'),
         ],
+      );
+
+  Widget _effectDial(String label, int amount, Color color) => Expanded(
+        child: Column(children: [
+          Container(
+            width: 48, height: 48,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: color.withValues(alpha: .75), width: 3),
+              gradient: const RadialGradient(colors: [Color(0xFF1B2540), Color(0xFF080B16)]),
+            ),
+            child: Icon(Icons.tune_rounded, color: color, size: 21),
+          ),
+          const SizedBox(height: 6),
+          Text(label, style: const TextStyle(fontSize: 10)),
+          Text('$amount%', style: TextStyle(fontSize: 10, color: color)),
+        ]),
       );
 
   Widget _library() => ListView(
