@@ -275,52 +275,123 @@ class _PlayerShellState extends State<PlayerShell> {
         ],
       );
 
-  Widget _nowPlaying() => Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(color: panel, borderRadius: BorderRadius.circular(22)),
-        child: Column(children: [
-          Row(children: [
-            Container(
-              width: 58, height: 58,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                gradient: const LinearGradient(colors: [violet, pink]),
-              ),
-              child: const Icon(Icons.music_note_rounded, size: 34),
+  String _formatDuration(Duration? duration) {
+    if (duration == null || duration.isNegative) return '0:00';
+    final minutes = duration.inMinutes;
+    final seconds = duration.inSeconds.remainder(60).toString().padLeft(2, '0');
+    return '$minutes:$seconds';
+  }
+
+  Future<void> _skipTrack(int delta) async {
+    if (localTracks.isEmpty) {
+      await pickTracks();
+      return;
+    }
+    final next = (currentTrack + delta + localTracks.length) % localTracks.length;
+    await playTrack(next);
+  }
+
+  Widget _nowPlaying() => StreamBuilder<PlayerState>(
+        stream: audioPlayer.playerStateStream,
+        builder: (context, snapshot) {
+          final isPlaying = snapshot.data?.playing ?? audioPlayer.playing;
+          final track = localTracks.isNotEmpty && currentTrack < localTracks.length
+              ? localTracks[currentTrack]
+              : null;
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: panel,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(color: cyan.withValues(alpha: .18)),
             ),
-            const SizedBox(width: 13),
-            const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text('Electric Storm', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-              SizedBox(height: 4),
-              Text('Wins • Demo track', style: TextStyle(color: Colors.white54, fontSize: 12)),
-            ])),
-            IconButton(onPressed: () {}, icon: const Icon(Icons.favorite_border_rounded, color: pink)),
-          ]),
-          const SizedBox(height: 8),
-          const Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text('1:28', style: TextStyle(color: Colors.white54, fontSize: 11)),
-            Text('4:32', style: TextStyle(color: Colors.white54, fontSize: 11)),
-          ]),
-          Slider(value: .34, onChanged: (_) {}),
-          Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-            IconButton(onPressed: () {}, icon: const Icon(Icons.shuffle_rounded, color: Colors.white54)),
-            IconButton(onPressed: () {}, icon: const Icon(Icons.skip_previous_rounded, size: 34)),
-            const SizedBox(width: 8),
-            Container(
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: LinearGradient(colors: [cyan, violet]),
+            child: Column(children: [
+              Row(children: [
+                Container(
+                  width: 58, height: 58,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(16),
+                    gradient: const LinearGradient(colors: [violet, pink]),
+                  ),
+                  child: Icon(isPlaying ? Icons.graphic_eq_rounded : Icons.music_note_rounded, size: 34, color: Colors.white),
+                ),
+                const SizedBox(width: 13),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      track?.name ?? 'No track selected',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      track == null ? 'Choose a song from Library' : (track.extension?.toUpperCase() ?? 'LOCAL AUDIO'),
+                      style: const TextStyle(color: Colors.white54, fontSize: 12),
+                    ),
+                  ],
+                )),
+                IconButton(
+                  tooltip: 'Open library',
+                  onPressed: () => setState(() => tab = 3),
+                  icon: const Icon(Icons.library_music_rounded, color: cyan),
+                ),
+              ]),
+              const SizedBox(height: 8),
+              StreamBuilder<Duration>(
+                stream: audioPlayer.positionStream,
+                initialData: audioPlayer.position,
+                builder: (context, positionSnapshot) {
+                  final position = positionSnapshot.data ?? Duration.zero;
+                  final duration = audioPlayer.duration ?? Duration.zero;
+                  final maxMs = duration.inMilliseconds > 0 ? duration.inMilliseconds : 1;
+                  final currentMs = position.inMilliseconds.clamp(0, maxMs).toDouble();
+                  return Column(children: [
+                    Slider(
+                      value: currentMs,
+                      min: 0,
+                      max: maxMs.toDouble(),
+                      onChanged: duration.inMilliseconds <= 0 ? null : (value) {
+                        audioPlayer.seek(Duration(milliseconds: value.round()));
+                      },
+                    ),
+                    Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                      Text(_formatDuration(position), style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                      Text(_formatDuration(duration), style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                    ]),
+                  ]);
+                },
               ),
-              child: IconButton(
-                onPressed: togglePlayback,
-                icon: Icon(audioPlayer.playing ? Icons.pause_rounded : Icons.play_arrow_rounded, color: ink, size: 32),
-              ),
-            ),
-            const SizedBox(width: 8),
-            IconButton(onPressed: () {}, icon: const Icon(Icons.skip_next_rounded, size: 34)),
-            IconButton(onPressed: () {}, icon: const Icon(Icons.repeat_rounded, color: Colors.white54)),
-          ]),
-        ]),
+              const SizedBox(height: 4),
+              Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                IconButton(
+                  tooltip: 'Previous track',
+                  onPressed: () => _skipTrack(-1),
+                  icon: const Icon(Icons.skip_previous_rounded, size: 34),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  decoration: const BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: LinearGradient(colors: [cyan, violet]),
+                  ),
+                  child: IconButton(
+                    tooltip: isPlaying ? 'Pause' : 'Play',
+                    onPressed: togglePlayback,
+                    icon: Icon(isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded, color: ink, size: 32),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: 'Next track',
+                  onPressed: () => _skipTrack(1),
+                  icon: const Icon(Icons.skip_next_rounded, size: 34),
+                ),
+              ]),
+            ]),
+          );
+        },
       );
 
   Widget _equalizer() => ListView(
