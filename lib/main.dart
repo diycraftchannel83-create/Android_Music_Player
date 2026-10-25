@@ -286,37 +286,6 @@ class _PlayerShellState extends State<PlayerShell> {
         ),
       );
 
-  Widget _visualizer() => Container(
-        height: 142,
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft, end: Alignment.bottomRight,
-            colors: [Color(0xFF17214A), Color(0xFF17102E), Color(0xFF0B1825)],
-          ),
-          border: Border.all(color: cyan.withValues(alpha: .25)),
-        ),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.end,
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: List.generate(27, (i) {
-            final h = 18.0 + ((i * 17 + 11) % 79);
-            return Container(
-              width: 5, height: h,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(8),
-                gradient: const LinearGradient(
-                  begin: Alignment.bottomCenter, end: Alignment.topCenter,
-                  colors: [cyan, violet, pink],
-                ),
-                boxShadow: [BoxShadow(color: violet.withValues(alpha: .2), blurRadius: 8)],
-              ),
-            );
-          }),
-        ),
-      );
-
   Widget _nowPlaying() => Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(color: panel, borderRadius: BorderRadius.circular(22)),
@@ -578,39 +547,6 @@ class _PlayerShellState extends State<PlayerShell> {
         ]),
       );
 
-  Widget _featureCard(IconData icon, String title, String subtitle, Color color, VoidCallback onTap) =>
-      InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(20),
-        child: Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: panel, borderRadius: BorderRadius.circular(20), border: Border.all(color: color.withValues(alpha: .25))),
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Icon(icon, color: color, size: 28),
-            const SizedBox(height: 14),
-            Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-            const SizedBox(height: 4),
-            Text(subtitle, style: const TextStyle(fontSize: 11, color: Colors.white54)),
-          ]),
-        ),
-      );
-
-  Widget _track(String title, String artist, IconData icon, Color color) => Padding(
-        padding: const EdgeInsets.only(bottom: 9),
-        child: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: panel, borderRadius: BorderRadius.circular(16)),
-          child: Row(children: [
-            Container(width: 46, height: 46, decoration: BoxDecoration(color: color.withValues(alpha: .17), borderRadius: BorderRadius.circular(12)), child: Icon(icon, color: color)),
-            const SizedBox(width: 12),
-            Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-              Text(artist, style: const TextStyle(color: Colors.white54, fontSize: 12)),
-            ])),
-            const Icon(Icons.play_circle_fill_rounded, color: cyan, size: 30),
-          ]),
-        ),
-      );
 }
 
 class _PageHeading extends StatelessWidget {
