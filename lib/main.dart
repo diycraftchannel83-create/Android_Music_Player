@@ -467,6 +467,45 @@ class _PlayerShellState extends State<PlayerShell> {
         ],
       );
 
+  Widget _presetChips() => Container(
+        padding: const EdgeInsets.all(15),
+        decoration: BoxDecoration(
+          color: panel,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: violet.withValues(alpha: .25)),
+        ),
+        child: Row(children: [
+          const Icon(Icons.tune_rounded, color: cyan),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text('Custom preset', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'Choose equalizer preset',
+            icon: const Icon(Icons.keyboard_arrow_down_rounded),
+            onSelected: (preset) {
+              final values = switch (preset) {
+                'Super Bass' => <double>[0.95, 0.90, 0.68, 0.48, 0.45, 0.48, 0.52],
+                'Rock' => <double>[0.88, 0.78, 0.40, 0.68, 0.82, 0.86, 0.88],
+                'Vocal' => <double>[0.34, 0.42, 0.72, 0.88, 0.84, 0.68, 0.58],
+                _ => <double>[0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5],
+              };
+              setState(() {
+                for (var i = 0; i < bands.length; i++) {
+                  bands[i] = values[i];
+                }
+              });
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'Normal', child: Text('Normal')),
+              PopupMenuItem(value: 'Super Bass', child: Text('Super Bass')),
+              PopupMenuItem(value: 'Rock', child: Text('Rock')),
+              PopupMenuItem(value: 'Vocal', child: Text('Vocal')),
+            ],
+          ),
+        ]),
+      );
+
   Widget _libraryPill(IconData icon, String label, bool selected, VoidCallback onTap) =>
       Padding(
         padding: const EdgeInsets.only(right: 8),
