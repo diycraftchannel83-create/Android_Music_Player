@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -60,6 +61,15 @@ class _PlayerShellState extends State<PlayerShell> {
   int currentTrack = 0;
   String libraryQuery = '';
   String? audioError;
+  StreamSubscription<int?>? _audioSessionSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _audioSessionSubscription = audioPlayer.androidAudioSessionIdStream.listen((sessionId) {
+      if (sessionId != null) _applyAudioEffects();
+    });
+  }
 
   Future<void> _applyAudioEffects() async {
     try {
@@ -136,8 +146,13 @@ class _PlayerShellState extends State<PlayerShell> {
       await audioPlayer.setFilePath(path);
       if (!mounted) return;
       setState(() { currentTrack = safeIndex; playing = true; audioError = null; });
-      // just_audio may not expose the Android session until playback has started.
-      await audioPlayer.play();
+      // play() completes when playback finishes, so do not await it here.
+      // The session-ID stream above reapplies effects when Android exposes the session.
+      unawaited(audioPlayer.play().catchError((Object error) {
+        if (mounted) {
+          setState(() => audioError = 'Gagal memutar audio: $error');
+        }
+      }));
       await _applyAudioEffects();
     } catch (e) {
       if (mounted) setState(() => audioError = 'Gagal memutar audio: $e');
@@ -156,7 +171,11 @@ class _PlayerShellState extends State<PlayerShell> {
   }
 
   @override
-  void dispose() { audioPlayer.dispose(); super.dispose(); }
+  void dispose() {
+    unawaited(_audioSessionSubscription?.cancel());
+    audioPlayer.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
