@@ -55,6 +55,7 @@ class _PlayerShellState extends State<PlayerShell> {
   final AudioPlayer audioPlayer = AudioPlayer();
   final List<PlatformFile> localTracks = <PlatformFile>[];
   int currentTrack = 0;
+  String libraryQuery = '';
   String? audioError;
 
   Future<void> pickTracks() async {
@@ -427,45 +428,147 @@ class _PlayerShellState extends State<PlayerShell> {
         ]),
       );
 
-  Widget _library() => ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          const _PageHeading('Your Library', 'Play audio files stored on your device'),
-          const SizedBox(height: 18),
-          FilledButton.icon(
+  Widget _library() {
+    final tracks = localTracks.where((track) =>
+      track.name.toLowerCase().contains(libraryQuery.toLowerCase())).toList();
+
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(18, 18, 18, 26),
+      children: [
+        Row(children: [
+          const Expanded(child: _PageHeading('Your Library', 'Your music, your vibe')),
+          IconButton(
+            tooltip: 'Add music',
             onPressed: pickTracks,
-            icon: const Icon(Icons.library_add_rounded),
-            label: const Text('Add music files'),
-            style: FilledButton.styleFrom(minimumSize: const Size.fromHeight(52)),
+            icon: const Icon(Icons.add_circle_rounded, color: cyan, size: 30),
           ),
-          if (audioError != null) ...[
-            const SizedBox(height: 12),
-            _InfoNote('Audio message', audioError!),
-          ],
-          const SizedBox(height: 18),
-          if (localTracks.isEmpty)
-            const _InfoNote('Your library is empty', 'Tap Add music files and select audio files from your device. Playback works for selected local files; equalizer DSP and background playback are not connected yet.')
-          else
-            ...List.generate(localTracks.length, (i) {
-              final track = localTracks[i];
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
+        ]),
+        const SizedBox(height: 18),
+        TextField(
+          onChanged: (value) => setState(() => libraryQuery = value),
+          decoration: InputDecoration(
+            hintText: 'Search songs on this device',
+            prefixIcon: const Icon(Icons.search_rounded, color: cyan),
+            filled: true,
+            fillColor: panel,
+            contentPadding: const EdgeInsets.symmetric(vertical: 14),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: Colors.white.withValues(alpha: .08)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(16),
+              borderSide: BorderSide(color: Colors.white.withValues(alpha: .08)),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(children: [
+            _libraryPill(Icons.music_note_rounded, 'Songs', true, () {}),
+            _libraryPill(Icons.album_rounded, 'Albums', false, () {}),
+            _libraryPill(Icons.person_rounded, 'Artists', false, () {}),
+            _libraryPill(Icons.folder_rounded, 'Folders', false, pickTracks),
+          ]),
+        ),
+        const SizedBox(height: 22),
+        Row(children: [
+          const Expanded(child: Text('All songs', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800))),
+          Text('${localTracks.length} TRACKS', style: const TextStyle(color: cyan, fontSize: 10, letterSpacing: 1.2)),
+        ]),
+        const SizedBox(height: 12),
+        if (audioError != null) ...[
+          _InfoNote('Audio message', audioError!),
+          const SizedBox(height: 12),
+        ],
+        if (localTracks.isEmpty)
+          Container(
+            padding: const EdgeInsets.fromLTRB(22, 24, 22, 24),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(24),
+              gradient: const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF17264A), Color(0xFF17102E), panel],
+              ),
+              border: Border.all(color: cyan.withValues(alpha: .22)),
+            ),
+            child: Column(children: [
+              Container(
+                width: 88, height: 88,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: LinearGradient(colors: [cyan.withValues(alpha: .18), violet.withValues(alpha: .2)]),
+                  border: Border.all(color: violet.withValues(alpha: .65), width: 2),
+                ),
+                child: const Icon(Icons.library_music_rounded, size: 42, color: cyan),
+              ),
+              const SizedBox(height: 16),
+              const Text('Build your music library', textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 8),
+              const Text(
+                'Choose audio files from your phone to start listening. Your selected tracks will appear here.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.white70, height: 1.45),
+              ),
+              const SizedBox(height: 18),
+              FilledButton.icon(
+                onPressed: pickTracks,
+                icon: const Icon(Icons.folder_open_rounded),
+                label: const Text('Browse music files'),
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size.fromHeight(50),
+                  backgroundColor: cyan,
+                  foregroundColor: ink,
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+                Icon(Icons.offline_bolt_rounded, size: 16, color: violet),
+                SizedBox(width: 6),
+                Text('Offline local playback', style: TextStyle(fontSize: 11, color: Colors.white70)),
+              ]),
+            ]),
+          )
+        else if (tracks.isEmpty)
+          const _InfoNote('No matching songs', 'Try another search term.')
+        else
+          ...tracks.map((track) {
+            final i = localTracks.indexOf(track);
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 9),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: panel,
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: i == currentTrack ? cyan.withValues(alpha: .4) : Colors.white10),
+                ),
                 child: ListTile(
-                  tileColor: panel,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-                  leading: Icon(i == currentTrack ? Icons.equalizer_rounded : Icons.music_note_rounded, color: i == currentTrack ? cyan : violet),
+                  leading: Container(
+                    width: 44, height: 44,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      gradient: LinearGradient(colors: i == currentTrack ? [cyan, violet] : [violet.withValues(alpha: .35), panel]),
+                    ),
+                    child: Icon(i == currentTrack ? Icons.equalizer_rounded : Icons.music_note_rounded, color: i == currentTrack ? ink : cyan),
+                  ),
                   title: Text(track.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                  subtitle: Text(track.extension?.toUpperCase() ?? 'AUDIO'),
+                  subtitle: Text(track.extension?.toUpperCase() ?? 'AUDIO', style: const TextStyle(fontSize: 10, color: Colors.white54)),
                   trailing: IconButton(
-                    icon: const Icon(Icons.play_circle_fill_rounded, color: cyan, size: 30),
-                    onPressed: () => playTrack(i),
+                    tooltip: 'Play track',
+                    icon: Icon(i == currentTrack && audioPlayer.playing ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded, color: cyan, size: 32),
+                    onPressed: () => i == currentTrack ? togglePlayback() : playTrack(i),
                   ),
                   onTap: () => playTrack(i),
                 ),
-              );
-            }),
-        ],
-      );
+              ),
+            );
+          }),
+      ],
+    );
+  }
 
   Widget _presetChips() => Container(
         padding: const EdgeInsets.all(15),
