@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 void main() => runApp(const AndroidMusicPlayerApp());
 
@@ -64,14 +65,45 @@ class _PlayerShellState extends State<PlayerShell> with SingleTickerProviderStat
   String? audioError;
   StreamSubscription<int?>? _audioSessionSubscription;
   late final AnimationController _visualizerController;
+  static const EventChannel _visualizerChannel = EventChannel('android_music_player/visualizer');
+  StreamSubscription<dynamic>? _visualizerSubscription;
+  List<double> _spectrum = <double>[];
+  int? _visualizerSession;
 
   @override
   void initState() {
     super.initState();
     _visualizerController = AnimationController(vsync: this, duration: const Duration(milliseconds: 850))..repeat();
-    _audioSessionSubscription = audioPlayer.androidAudioSessionIdStream.listen((sessionId) {
-      if (sessionId != null) _applyAudioEffects();
+    _visualizerSubscription = _visualizerChannel.receiveBroadcastStream().listen((dynamic event) {
+      if (!mounted || event is! List) return;
+      final next = event.map((value) => (value as num).toDouble().clamp(0.0, 1.0).toDouble()).toList();
+      setState(() => _spectrum = next);
+    }, onError: (Object error) {
+      // Keep the animated fallback if device capture is unavailable.
     });
+    _audioSessionSubscription = audioPlayer.androidAudioSessionIdStream.listen((sessionId) {
+      if (sessionId != null) {
+        _applyAudioEffects();
+        _startVisualizer(sessionId);
+      }
+    });
+  }
+
+  Future<void> _startVisualizer(int sessionId) async {
+    if (_visualizerSession == sessionId) return;
+    _visualizerSession = sessionId;
+    try {
+      final permission = await Permission.microphone.request();
+      if (!permission.isGranted) {
+        if (mounted) setState(() => audioError = 'Izin mikrofon diperlukan Android untuk membaca spektrum visualizer.');
+        return;
+      }
+      await _effectsChannel.invokeMethod<bool>('startVisualizer', {'sessionId': sessionId});
+    } on PlatformException catch (e) {
+      if (mounted) setState(() => audioError = 'Visualizer spektrum tidak tersedia: ${e.message ?? e.code}');
+    } catch (e) {
+      if (mounted) setState(() => audioError = 'Gagal memulai visualizer: $e');
+    }
   }
 
   Future<void> _applyAudioEffects() async {
@@ -179,6 +211,7 @@ class _PlayerShellState extends State<PlayerShell> with SingleTickerProviderStat
   @override
   void dispose() {
     unawaited(_audioSessionSubscription?.cancel());
+    unawaited(_visualizerSubscription?.cancel());
     _visualizerController.dispose();
     audioPlayer.dispose();
     super.dispose();
@@ -313,11 +346,17 @@ class _PlayerShellState extends State<PlayerShell> with SingleTickerProviderStat
               crossAxisAlignment: CrossAxisAlignment.end,
               mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: List.generate(count, (i) {
+                final hasSpectrum = _spectrum.isNotEmpty;
+                final bin = hasSpectrum
+                    ? _spectrum[((i * _spectrum.length) / count).floor().clamp(0, _spectrum.length - 1)]
+                    : 0.0;
                 final wave = (math.sin(phase * 1.7 + i * 0.62) +
                         math.sin(phase * 0.83 - i * 0.31) * 0.55 +
                         math.sin(i * 1.17) * 0.35)
                     .abs();
-                final level = active ? (0.18 + wave * 0.82) : (0.12 + (math.sin(i * 0.7).abs() * 0.18));
+                final level = hasSpectrum
+                    ? (0.08 + bin * 0.92)
+                    : (active ? (0.18 + wave * 0.82) : (0.12 + (math.sin(i * 0.7).abs() * 0.18)));
                 return Flexible(
                   child: Container(
                     width: count > 28 ? 4 : 5,
