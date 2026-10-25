@@ -75,7 +75,7 @@ class _PlayerShellState extends State<PlayerShell> {
     try {
       final sessionId = audioPlayer.androidAudioSessionId;
       if (sessionId == null) return;
-      await _effectsChannel.invokeMethod<void>('configure', {
+      final applied = await _effectsChannel.invokeMethod<bool>('configure', {
         'sessionId': sessionId,
         'equalizerEnabled': effectsEnabled,
         'bands': bands.map((v) => ((v - 0.5) * 24).round()).toList(),
@@ -84,10 +84,13 @@ class _PlayerShellState extends State<PlayerShell> {
         'surroundEnabled': surroundEnabled,
         'surroundStrength': (surroundWidth * 1000).round(),
       });
+      if (applied != true && mounted) {
+        setState(() => audioError = 'Android tidak menyediakan efek EQ, Bass Boost, atau Virtualizer untuk sesi ini.');
+      }
     } on PlatformException catch (e) {
       if (mounted) setState(() => audioError = 'Efek audio tidak tersedia di perangkat ini: ${e.message ?? e.code}');
-    } catch (_) {
-      // Effects are applied when the native Android audio session is available.
+    } catch (e) {
+      if (mounted) setState(() => audioError = 'Gagal menerapkan efek audio: $e');
     }
   }
 
