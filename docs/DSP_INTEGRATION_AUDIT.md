@@ -27,6 +27,15 @@ The production Dart code had several controls that changed their UI state withou
 
 The audit branch now listens to just_audio's Android audio-session-ID stream and reapplies settings when a non-null session appears (without awaiting the long-lived play() future), reapplies Bass Boost and Virtualizer values when their sliders move, applies the dropdown preset, and updates the status note to distinguish native controls from visual-only dials. This is a targeted bug fix, not proof of audible DSP output; the native device test is still required.
 
+## Live audio spectrum visualizer
+
+The branch now includes a native Android `Visualizer` capture path attached to the current just_audio audio-session ID. Its FFT callback converts the captured bins into 32 normalised levels and streams them to Flutter through an `EventChannel`; the Home and Now Playing bars render those live levels when available and retain an animated fallback if the device cannot provide capture data.
+
+- The app requests Android's microphone/record-audio permission because the platform Visualizer API requires it, even though the visualizer is attached to the app's playback session rather than used to record microphone input.
+- Visualizer capture can be unavailable or restricted by the device audio policy, other effects, or vendor implementation. In that case the app keeps its fallback animation; a moving fallback is not evidence of live FFT capture.
+- The native visualizer is released on activity destruction and recreated when the audio session changes.
+- This implementation has not yet been confirmed by a successful Android build or physical-device audio test. Check permission flow, session changes, FFT responsiveness, battery use, and capture conflicts on target devices.
+
 ## Evaluation: miniaudio_player
 
 The package page currently advertises version 2.1.0, MIT licensing for the package, native miniaudio playback, a 10-band EQ, bass-boost preset, limiter, and a stereo spatializer. It uses Dart Native Assets / FFI and has a substantially different playback API from just_audio.
