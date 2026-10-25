@@ -136,8 +136,9 @@ class _PlayerShellState extends State<PlayerShell> {
       await audioPlayer.setFilePath(path);
       if (!mounted) return;
       setState(() { currentTrack = safeIndex; playing = true; audioError = null; });
-      await _applyAudioEffects();
+      // just_audio may not expose the Android session until playback has started.
       await audioPlayer.play();
+      await _applyAudioEffects();
     } catch (e) {
       if (mounted) setState(() => audioError = 'Gagal memutar audio: $e');
     }
@@ -491,7 +492,15 @@ class _PlayerShellState extends State<PlayerShell> {
                 const Text('Bass intensity', style: TextStyle(color: Colors.white70)),
                 Text('${(bass * 100).round()}%', style: const TextStyle(color: cyan, fontWeight: FontWeight.bold)),
               ]),
-              Slider(value: bass, onChanged: bassEnabled ? (v) => setState(() => bass = v) : null),
+              Slider(
+                value: bass,
+                onChanged: bassEnabled
+                    ? (v) {
+                        setState(() => bass = v);
+                        _applyAudioEffects();
+                      }
+                    : null,
+              ),
             ]),
           ),
           const SizedBox(height: 14),
@@ -512,7 +521,15 @@ class _PlayerShellState extends State<PlayerShell> {
                 const Text('Width', style: TextStyle(color: Colors.white70)),
                 Text('${(surroundWidth * 100).round()}%', style: const TextStyle(color: cyan)),
               ]),
-              Slider(value: surroundWidth, onChanged: surroundEnabled ? (v) => setState(() => surroundWidth = v) : null),
+              Slider(
+                value: surroundWidth,
+                onChanged: surroundEnabled
+                    ? (v) {
+                        setState(() => surroundWidth = v);
+                        _applyAudioEffects();
+                      }
+                    : null,
+              ),
             ]),
           ),
           const SizedBox(height: 14),
@@ -536,7 +553,7 @@ class _PlayerShellState extends State<PlayerShell> {
             ]),
           ),
           const SizedBox(height: 14),
-          const _InfoNote('Audio processing status', 'These controls now match the reference design. The local player works, but bass boost, surround, reverb, chorus, flanger and delay remain visual controls until native Android audio effects are connected and tested.'),
+          const _InfoNote('Audio processing status', 'Equalizer, Bass Boost and Virtualizer are sent to native Android audio effects when an audio session is available. Availability and sound vary by device. Reverb, Chorus, Flanger and Delay are currently visual-only controls.'),
         ],
       );
 
@@ -734,6 +751,7 @@ class _PlayerShellState extends State<PlayerShell> {
                   bands[i] = values[i];
                 }
               });
+              _applyAudioEffects();
             },
             itemBuilder: (context) => const [
               PopupMenuItem(value: 'Normal', child: Text('Normal')),
