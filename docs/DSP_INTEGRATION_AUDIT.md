@@ -16,6 +16,17 @@ Do **not** replace the current just_audio playback path in this patch. Keep the 
 - The current equalizer UI exposes seven sliders, while the platform equalizer may expose a different number of bands. The bridge maps the seven UI controls to native band frequencies; this is an approximation, not a portable seven-band DSP filter chain.
 - The current README describes some playback functionality as future work, although lib/main.dart now contains local file selection, folder scanning, and playback logic. Keep documentation aligned as the project evolves.
 
+## Additional runtime defects found during the second pass
+
+The production Dart code had several controls that changed their UI state without consistently applying the new values to the native engine:
+
+- The audio effects were applied immediately after setFilePath and before play(). If just_audio had not created/exposed its Android audio session yet, _applyAudioEffects returned early and no retry was guaranteed.
+- Bass intensity and surround width sliders only called setState; dragging them did not send the new strengths to the native effects.
+- The dropdown preset in _presetChips updated the seven band values without applying the preset to the native equalizer.
+- Reverb, Chorus, Flanger and Delay dials are display-only controls. They are not backed by native DSP and must not be presented as functional effects.
+
+The audit branch now applies effects after playback starts, reapplies Bass Boost and Virtualizer values when their sliders move, applies the dropdown preset, and updates the status note to distinguish working native controls from visual-only dials. This is a targeted bug fix, not proof of audible DSP output; the native device test is still required.
+
 ## Evaluation: miniaudio_player
 
 The package page currently advertises version 2.1.0, MIT licensing for the package, native miniaudio playback, a 10-band EQ, bass-boost preset, limiter, and a stereo spatializer. It uses Dart Native Assets / FFI and has a substantially different playback API from just_audio.
@@ -59,4 +70,4 @@ Create a playback adapter that isolates the UI from the engine. Switch to the ne
 
 ## Build/test status for this patch
 
-This change is an audit and migration gate only. A Flutter/Gradle build could not be run in the current editing environment. The repository's GitHub Actions workflow should be used to validate any follow-up code change; do not describe this documentation-only patch as enabling new DSP effects.
+The branch now contains the audit document, pull-request CI trigger, and targeted Dart control fixes. Flutter analyze/test and release APK build could not be executed from this editing environment. GitHub's workflow-run lookup has not returned a run for the latest commit yet, so build status is **pending/unverified**, not passed. Do not describe these changes as proof of audible DSP output until CI and physical-device tests pass.
