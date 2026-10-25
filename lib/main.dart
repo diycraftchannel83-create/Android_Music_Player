@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
@@ -46,7 +47,7 @@ class PlayerShell extends StatefulWidget {
   State<PlayerShell> createState() => _PlayerShellState();
 }
 
-class _PlayerShellState extends State<PlayerShell> {
+class _PlayerShellState extends State<PlayerShell> with SingleTickerProviderStateMixin {
   int tab = 0;
   bool playing = false;
   bool bassEnabled = true;
@@ -62,10 +63,12 @@ class _PlayerShellState extends State<PlayerShell> {
   String libraryQuery = '';
   String? audioError;
   StreamSubscription<int?>? _audioSessionSubscription;
+  late final AnimationController _visualizerController;
 
   @override
   void initState() {
     super.initState();
+    _visualizerController = AnimationController(vsync: this, duration: const Duration(milliseconds: 850))..repeat();
     _audioSessionSubscription = audioPlayer.androidAudioSessionIdStream.listen((sessionId) {
       if (sessionId != null) _applyAudioEffects();
     });
@@ -176,6 +179,7 @@ class _PlayerShellState extends State<PlayerShell> {
   @override
   void dispose() {
     unawaited(_audioSessionSubscription?.cancel());
+    _visualizerController.dispose();
     audioPlayer.dispose();
     super.dispose();
   }
@@ -244,7 +248,7 @@ class _PlayerShellState extends State<PlayerShell> {
               const SizedBox(height: 5),
               const Text('Your sound. Your rules.', style: TextStyle(fontSize: 24, height: 1.1, fontWeight: FontWeight.w900)),
               const SizedBox(height: 12),
-              SizedBox(height: 48, child: Row(crossAxisAlignment: CrossAxisAlignment.end, mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: List.generate(25, (i) => Container(width: 4, height: 10 + ((i * 17 + 11) % 38).toDouble(), decoration: BoxDecoration(borderRadius: BorderRadius.circular(5), gradient: const LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [cyan, violet, pink])))))),
+              _visualizerBars(height: 48, count: 25),
               const SizedBox(height: 8),
               const Row(children: [
                 Icon(Icons.equalizer_rounded, color: violet, size: 18), SizedBox(width: 5),
@@ -296,6 +300,46 @@ class _PlayerShellState extends State<PlayerShell> {
             _InfoNote('Playback message', audioError!),
           ],
         ],
+      );
+
+  Widget _visualizerBars({double height = 52, int count = 36}) => AnimatedBuilder(
+        animation: _visualizerController,
+        builder: (context, child) {
+          final active = audioPlayer.playing;
+          final phase = _visualizerController.value * math.pi * 2;
+          return SizedBox(
+            height: height,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: List.generate(count, (i) {
+                final wave = (math.sin(phase * 1.7 + i * 0.62) +
+                        math.sin(phase * 0.83 - i * 0.31) * 0.55 +
+                        math.sin(i * 1.17) * 0.35)
+                    .abs();
+                final level = active ? (0.18 + wave * 0.82) : (0.12 + (math.sin(i * 0.7).abs() * 0.18));
+                return Flexible(
+                  child: Container(
+                    width: count > 28 ? 4 : 5,
+                    height: (height * level).clamp(4.0, height),
+                    margin: const EdgeInsets.symmetric(horizontal: 1),
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(5),
+                      gradient: const LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [cyan, violet, pink],
+                      ),
+                      boxShadow: active
+                          ? [BoxShadow(color: cyan.withValues(alpha: 0.16), blurRadius: 5)]
+                          : null,
+                    ),
+                  ),
+                );
+              }),
+            ),
+          );
+        },
       );
 
   String _formatDuration(Duration? duration) {
@@ -361,6 +405,10 @@ class _PlayerShellState extends State<PlayerShell> {
                   icon: const Icon(Icons.library_music_rounded, color: cyan),
                 ),
               ]),
+              const SizedBox(height: 14),
+              _visualizerBars(height: 46, count: 32),
+              const SizedBox(height: 6),
+              const Align(alignment: Alignment.centerLeft, child: Text('AUDIO VISUALIZER', style: TextStyle(fontSize: 9, color: cyan, letterSpacing: 1.8, fontWeight: FontWeight.w700))),
               const SizedBox(height: 8),
               StreamBuilder<Duration>(
                 stream: audioPlayer.positionStream,
