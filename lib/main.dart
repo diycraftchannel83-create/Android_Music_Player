@@ -160,7 +160,7 @@ class _PlayerShellState extends State<PlayerShell> {
               const SizedBox(height: 5),
               const Text('Your sound. Your rules.', style: TextStyle(fontSize: 24, height: 1.1, fontWeight: FontWeight.w900)),
               const SizedBox(height: 12),
-              SizedBox(height: 55, child: _visualizer()),
+              SizedBox(height: 48, child: Row(crossAxisAlignment: CrossAxisAlignment.end, mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: List.generate(25, (i) => Container(width: 4, height: 10 + ((i * 17 + 11) % 38).toDouble(), decoration: BoxDecoration(borderRadius: BorderRadius.circular(5), gradient: const LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [cyan, violet, pink])))))),
               const SizedBox(height: 8),
               const Row(children: [
                 Icon(Icons.equalizer_rounded, color: violet, size: 18), SizedBox(width: 5),
@@ -373,7 +373,7 @@ class _PlayerShellState extends State<PlayerShell> {
             padding: const EdgeInsets.fromLTRB(12, 22, 12, 12),
             decoration: BoxDecoration(color: panel, borderRadius: BorderRadius.circular(24)),
             child: Row(
-              children: List.generate(5, (i) => Expanded(
+              children: List.generate(7, (i) => Expanded(
                 child: Column(children: [
                   Text(['+6', '+4', '+2', '0', '+2', '+4', '+6'][i], style: const TextStyle(color: cyan, fontSize: 11)),
                   SizedBox(
@@ -402,9 +402,9 @@ class _PlayerShellState extends State<PlayerShell> {
               backgroundColor: panel,
               side: BorderSide(color: s == 'Super Bass' ? cyan : Colors.white12),
               onPressed: () => setState(() {
-                final values = s == 'Super Bass' ? [0.95, 0.84, 0.53, 0.45, 0.5] :
-                    s == 'Rock' ? [0.85, 0.72, 0.42, 0.75, 0.86] :
-                    s == 'Vocal' ? [0.35, 0.48, 0.82, 0.77, 0.55] : [0.5, 0.5, 0.5, 0.5, 0.5];
+                final values = s == 'Super Bass' ? [0.95, 0.90, 0.68, 0.48, 0.45, 0.48, 0.52] :
+                    s == 'Rock' ? [0.88, 0.78, 0.40, 0.68, 0.82, 0.86, 0.88] :
+                    s == 'Vocal' ? [0.34, 0.42, 0.72, 0.88, 0.84, 0.68, 0.58] : [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5];
                 for (var i = 0; i < bands.length; i++) { bands[i] = values[i]; }
               }),
             )).toList()),
