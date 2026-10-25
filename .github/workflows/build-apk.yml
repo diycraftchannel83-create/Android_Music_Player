@@ -36,21 +36,74 @@ jobs:
           import android.media.audiofx.BassBoost
           import android.media.audiofx.Equalizer
           import android.media.audiofx.Virtualizer
+          import android.media.audiofx.Visualizer
           import io.flutter.embedding.android.FlutterActivity
           import io.flutter.embedding.engine.FlutterEngine
+          import io.flutter.plugin.common.EventChannel
           import io.flutter.plugin.common.MethodChannel
+          import kotlin.math.ln
+          import kotlin.math.sqrt
 
           class MainActivity : FlutterActivity() {
             private val channelName = "android_music_player/audio_effects"
+            private val visualizerChannelName = "android_music_player/visualizer"
             private var equalizer: Equalizer? = null
             private var bassBoost: BassBoost? = null
             private var virtualizer: Virtualizer? = null
+            private var visualizer: Visualizer? = null
+            @Volatile private var visualizerSink: EventChannel.EventSink? = null
             private var activeSession = 0
 
             override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
               super.configureFlutterEngine(flutterEngine)
+              EventChannel(flutterEngine.dartExecutor.binaryMessenger, visualizerChannelName)
+                .setStreamHandler(object : EventChannel.StreamHandler {
+                  override fun onListen(arguments: Any?, events: EventChannel.EventSink?) { visualizerSink = events }
+                  override fun onCancel(arguments: Any?) { visualizerSink = null }
+                })
               MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
                 .setMethodCallHandler { call, result ->
+                  if (call.method == "startVisualizer") {
+                    try {
+                      val sessionId = call.argument<Int>("sessionId") ?: 0
+                      if (sessionId <= 0) { result.success(false); return@setMethodCallHandler }
+                      if (visualizer == null || activeSession != sessionId) {
+                        releaseVisualizer()
+                        val capture = Visualizer(sessionId)
+                        capture.captureSize = Visualizer.getCaptureSizeRange()[1]
+                        capture.setDataCaptureListener(object : Visualizer.OnDataCaptureListener {
+                          override fun onWaveFormDataCapture(effect: Visualizer?, waveform: ByteArray?, samplingRate: Int) = Unit
+                          override fun onFftDataCapture(effect: Visualizer?, fft: ByteArray?, samplingRate: Int) {
+                            if (fft == null || fft.size < 4) return
+                            val bins = 32
+                            val positiveBins = (fft.size / 2).coerceAtLeast(1)
+                            val levels = (0 until bins).map { index ->
+                              val start = (1 + index * (positiveBins - 1) / bins).coerceIn(1, positiveBins)
+                              val end = (1 + (index + 1) * (positiveBins - 1) / bins).coerceIn(start + 1, positiveBins + 1)
+                              var peak = 0.0
+                              for (bin in start until end) {
+                                val offset = bin * 2
+                                if (offset + 1 >= fft.size) break
+                                val real = fft[offset].toInt().toDouble()
+                                val imaginary = fft[offset + 1].toInt().toDouble()
+                                peak = maxOf(peak, sqrt(real * real + imaginary * imaginary))
+                              }
+                              (ln(1.0 + peak) / ln(128.0)).coerceIn(0.0, 1.0)
+                            }
+                            runOnUiThread { visualizerSink?.success(levels) }
+                          }
+                        }, 20000, false, true)
+                        capture.enabled = true
+                        visualizer = capture
+                        activeSession = sessionId
+                      }
+                      result.success(true)
+                    } catch (error: Exception) {
+                      releaseVisualizer()
+                      result.error("VISUALIZER_FAILED", error.message ?: "Android visualizer could not start", null)
+                    }
+                    return@setMethodCallHandler
+                  }
                   if (call.method != "configure") {
                     result.notImplemented()
                     return@setMethodCallHandler
@@ -114,6 +167,12 @@ jobs:
                 }
             }
 
+            private fun releaseVisualizer() {
+              try { visualizer?.setEnabled(false) } catch (_: Exception) {}
+              try { visualizer?.release() } catch (_: Exception) {}
+              visualizer = null
+            }
+
             private fun releaseEffects() {
               try { equalizer?.release() } catch (_: Exception) {}
               try { bassBoost?.release() } catch (_: Exception) {}
@@ -124,6 +183,7 @@ jobs:
             }
 
             override fun onDestroy() {
+              releaseVisualizer()
               releaseEffects()
               super.onDestroy()
             }
@@ -134,7 +194,9 @@ jobs:
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
           sed -i 's/android:label="android_music_player"/android:label="Android Music Player"/' "$MANIFEST"
+          sed -i '/<application/i\    <uses-permission android:name="android.permission.RECORD_AUDIO" />' "$MANIFEST"
           grep -q 'android:label="Android Music Player"' "$MANIFEST"
+          grep -q 'android.permission.RECORD_AUDIO' "$MANIFEST"
       - name: Flutter dependencies
         run: flutter pub get
       - name: Analyze
