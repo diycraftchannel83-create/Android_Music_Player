@@ -91,14 +91,14 @@ class _PlayerShellState extends State<PlayerShell> with SingleTickerProviderStat
 
   Future<void> _startVisualizer(int sessionId) async {
     if (_visualizerSession == sessionId) return;
-    _visualizerSession = sessionId;
     try {
       final permission = await Permission.microphone.request();
       if (!permission.isGranted) {
         if (mounted) setState(() => audioError = 'Izin mikrofon diperlukan Android untuk membaca spektrum visualizer.');
         return;
       }
-      await _effectsChannel.invokeMethod<bool>('startVisualizer', {'sessionId': sessionId});
+      final started = await _effectsChannel.invokeMethod<bool>('startVisualizer', {'sessionId': sessionId});
+      if (started == true) _visualizerSession = sessionId;
     } on PlatformException catch (e) {
       if (mounted) setState(() => audioError = 'Visualizer spektrum tidak tersedia: ${e.message ?? e.code}');
     } catch (e) {
