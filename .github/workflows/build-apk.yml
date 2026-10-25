@@ -3,6 +3,7 @@ name: Build Android Music Player APK
 on:
   push:
     branches: [main, "rebrand/**"]
+  pull_request:
   workflow_dispatch:
 
 jobs:
