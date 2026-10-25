@@ -63,7 +63,7 @@ class _PlayerShellState extends State<PlayerShell> {
 
   Future<void> _applyAudioEffects() async {
     try {
-      final sessionId = await audioPlayer.androidAudioSessionId;
+      final sessionId = audioPlayer.androidAudioSessionId;
       if (sessionId == null) return;
       await _effectsChannel.invokeMethod<void>('configure', {
         'sessionId': sessionId,
@@ -96,7 +96,7 @@ class _PlayerShellState extends State<PlayerShell> {
         if (dot < 0 || !extensions.contains(name.substring(dot).toLowerCase())) continue;
         try {
           final stat = await entity.stat();
-          found.add(PlatformFile(name: name, path: entity.path, size: stat.size, extension: name.substring(dot + 1).toLowerCase()));
+          found.add(PlatformFile(name: name, path: entity.path, size: stat.size));
         } catch (_) {
           // Skip files that become unavailable during scanning.
         }
@@ -502,9 +502,9 @@ class _PlayerShellState extends State<PlayerShell> {
               if (choice == 'scan') scanFolder();
               if (choice == 'files') pickTracks();
             },
-            itemBuilder: (context) => const [
-              PopupMenuItem(value: 'scan', child: ListTile(leading: Icon(Icons.folder_search_rounded), title: Text('Scan folder'), subtitle: Text('Find MP3 / MP4 and audio files'))),
-              PopupMenuItem(value: 'files', child: ListTile(leading: Icon(Icons.audio_file_rounded), title: Text('Choose files'))),
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'scan', child: ListTile(leading: Icon(Icons.folder_open_rounded), title: Text('Scan folder'), subtitle: Text('Find MP3 / MP4 and audio files'))),
+              const PopupMenuItem(value: 'files', child: ListTile(leading: Icon(Icons.audio_file_rounded), title: Text('Choose files'))),
             ],
           ),
         ]),
