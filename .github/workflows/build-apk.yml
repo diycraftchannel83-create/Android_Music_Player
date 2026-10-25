@@ -53,6 +53,7 @@ jobs:
             private var visualizer: Visualizer? = null
             @Volatile private var visualizerSink: EventChannel.EventSink? = null
             private var activeSession = 0
+            private var visualizerSession = 0
 
             override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
               super.configureFlutterEngine(flutterEngine)
@@ -67,7 +68,7 @@ jobs:
                     try {
                       val sessionId = call.argument<Int>("sessionId") ?: 0
                       if (sessionId <= 0) { result.success(false); return@setMethodCallHandler }
-                      if (visualizer == null || activeSession != sessionId) {
+                      if (visualizer == null || visualizerSession != sessionId) {
                         releaseVisualizer()
                         val capture = Visualizer(sessionId)
                         capture.captureSize = Visualizer.getCaptureSizeRange()[1]
@@ -95,7 +96,7 @@ jobs:
                         }, 20000, false, true)
                         capture.enabled = true
                         visualizer = capture
-                        activeSession = sessionId
+                        visualizerSession = sessionId
                       }
                       result.success(true)
                     } catch (error: Exception) {
@@ -171,6 +172,7 @@ jobs:
               try { visualizer?.setEnabled(false) } catch (_: Exception) {}
               try { visualizer?.release() } catch (_: Exception) {}
               visualizer = null
+              visualizerSession = 0
             }
 
             private fun releaseEffects() {
