@@ -321,7 +321,7 @@ class _PlayerShellState extends State<PlayerShell> with SingleTickerProviderStat
                 return Flexible(
                   child: Container(
                     width: count > 28 ? 4 : 5,
-                    height: (height * level).clamp(4.0, height),
+                    height: (height * level).clamp(4.0, height).toDouble(),
                     margin: const EdgeInsets.symmetric(horizontal: 1),
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(5),
