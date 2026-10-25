@@ -24,6 +24,110 @@ jobs:
           cache: true
       - name: Generate Android project
         run: flutter create --platforms=android --project-name=android_music_player .
+      - name: Install native Android audio effects bridge
+        shell: bash
+        run: |
+          mkdir -p android/app/src/main/kotlin/com/example/android_music_player
+          cat > android/app/src/main/kotlin/com/example/android_music_player/MainActivity.kt <<'KOTLIN'
+          package com.example.android_music_player
+
+          import android.media.audiofx.AudioEffect
+          import android.media.audiofx.BassBoost
+          import android.media.audiofx.Equalizer
+          import android.media.audiofx.Virtualizer
+          import io.flutter.embedding.android.FlutterActivity
+          import io.flutter.embedding.engine.FlutterEngine
+          import io.flutter.plugin.common.MethodChannel
+
+          class MainActivity : FlutterActivity() {
+            private val channelName = "android_music_player/audio_effects"
+            private var equalizer: Equalizer? = null
+            private var bassBoost: BassBoost? = null
+            private var virtualizer: Virtualizer? = null
+            private var activeSession = 0
+
+            override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+              super.configureFlutterEngine(flutterEngine)
+              MethodChannel(flutterEngine.dartExecutor.binaryMessenger, channelName)
+                .setMethodCallHandler { call, result ->
+                  if (call.method != "configure") {
+                    result.notImplemented()
+                    return@setMethodCallHandler
+                  }
+                  try {
+                    val sessionId = call.argument<Int>("sessionId") ?: 0
+                    if (sessionId <= 0) {
+                      result.success(false)
+                      return@setMethodCallHandler
+                    }
+                    if (activeSession != sessionId) {
+                      releaseEffects()
+                      activeSession = sessionId
+                      try { equalizer = Equalizer(0, sessionId) } catch (_: Exception) { equalizer = null }
+                      try { bassBoost = BassBoost(0, sessionId) } catch (_: Exception) { bassBoost = null }
+                      try { virtualizer = Virtualizer(0, sessionId) } catch (_: Exception) { virtualizer = null }
+                    }
+
+                    val eqOn = call.argument<Boolean>("equalizerEnabled") ?: true
+                    val values = call.argument<List<Int>>("bands") ?: emptyList()
+                    equalizer?.let { eq ->
+                      eq.enabled = eqOn
+                      val range = eq.bandLevelRange
+                      val minLevel = range[0].toInt()
+                      val maxLevel = range[1].toInt()
+                      val numberOfBands = eq.numberOfBands.toInt()
+                      for (band in 0 until numberOfBands) {
+                        val targetFrequency = eq.getCenterFreq(band.toShort()).toDouble()
+                        val uiIndex = when {
+                          targetFrequency < 120 -> 0
+                          targetFrequency < 400 -> 1
+                          targetFrequency < 1500 -> 2
+                          targetFrequency < 5000 -> 3
+                          targetFrequency < 9000 -> 4
+                          targetFrequency < 15000 -> 5
+                          else -> 6
+                        }
+                        val db = values.getOrNull(uiIndex) ?: 0
+                        val level = (db * 100).coerceIn(minLevel, maxLevel)
+                        eq.setBandLevel(band.toShort(), level.toShort())
+                      }
+                    }
+
+                    val bassOn = call.argument<Boolean>("bassEnabled") ?: false
+                    val bassStrength = (call.argument<Int>("bassStrength") ?: 0).coerceIn(0, 1000)
+                    bassBoost?.let { effect ->
+                      effect.setStrength(bassStrength.toShort())
+                      effect.enabled = bassOn
+                    }
+
+                    val surroundOn = call.argument<Boolean>("surroundEnabled") ?: false
+                    val surroundStrength = (call.argument<Int>("surroundStrength") ?: 0).coerceIn(0, 1000)
+                    virtualizer?.let { effect ->
+                      effect.setStrength(surroundStrength.toShort())
+                      effect.enabled = surroundOn
+                    }
+                    result.success(equalizer != null || bassBoost != null || virtualizer != null)
+                  } catch (error: Exception) {
+                    result.error("AUDIO_EFFECT_FAILED", error.message ?: "Android audio effects could not be applied", null)
+                  }
+                }
+            }
+
+            private fun releaseEffects() {
+              try { equalizer?.release() } catch (_: Exception) {}
+              try { bassBoost?.release() } catch (_: Exception) {}
+              try { virtualizer?.release() } catch (_: Exception) {}
+              equalizer = null
+              bassBoost = null
+              virtualizer = null
+            }
+
+            override fun onDestroy() {
+              releaseEffects()
+              super.onDestroy()
+            }
+          }
+          KOTLIN
       - name: Set Android app label
         shell: bash
         run: |
