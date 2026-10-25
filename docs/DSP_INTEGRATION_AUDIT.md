@@ -25,7 +25,7 @@ The production Dart code had several controls that changed their UI state withou
 - The dropdown preset in _presetChips updated the seven band values without applying the preset to the native equalizer.
 - Reverb, Chorus, Flanger and Delay dials are display-only controls. They are not backed by native DSP and must not be presented as functional effects.
 
-The audit branch now applies effects after playback starts, reapplies Bass Boost and Virtualizer values when their sliders move, applies the dropdown preset, and updates the status note to distinguish working native controls from visual-only dials. This is a targeted bug fix, not proof of audible DSP output; the native device test is still required.
+The audit branch now listens to just_audio's Android audio-session-ID stream and reapplies settings when a non-null session appears (without awaiting the long-lived play() future), reapplies Bass Boost and Virtualizer values when their sliders move, applies the dropdown preset, and updates the status note to distinguish native controls from visual-only dials. This is a targeted bug fix, not proof of audible DSP output; the native device test is still required.
 
 ## Evaluation: miniaudio_player
 
@@ -70,4 +70,4 @@ Create a playback adapter that isolates the UI from the engine. Switch to the ne
 
 ## Build/test status for this patch
 
-The branch now contains the audit document, pull-request CI trigger, and targeted Dart control fixes. Flutter analyze/test and release APK build could not be executed from this editing environment. GitHub's workflow-run lookup has not returned a run for the latest commit yet, so build status is **pending/unverified**, not passed. Do not describe these changes as proof of audible DSP output until CI and physical-device tests pass.
+The branch now contains the audit document, pull-request CI trigger, and targeted Dart control fixes, including a session-ID stream listener to avoid missing the effect-attachment window. Flutter analyze/test and release APK build could not be executed from this editing environment. GitHub's workflow-run lookup has not returned a run for the latest commit yet, so build status is **pending/unverified**, not passed. Do not describe these changes as proof of audible DSP output until CI and physical-device tests pass.
