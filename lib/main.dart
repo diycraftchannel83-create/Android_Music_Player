@@ -1,4 +1,6 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:just_audio/just_audio.dart';
 
@@ -53,10 +55,64 @@ class _PlayerShellState extends State<PlayerShell> {
   double bass = 0.72;
   final bands = <double>[0.72, 0.58, 0.43, 0.50, 0.66, 0.58, 0.72];
   final AudioPlayer audioPlayer = AudioPlayer();
+  static const MethodChannel _effectsChannel = MethodChannel('android_music_player/audio_effects');
   final List<PlatformFile> localTracks = <PlatformFile>[];
   int currentTrack = 0;
   String libraryQuery = '';
   String? audioError;
+
+  Future<void> _applyAudioEffects() async {
+    try {
+      final sessionId = await audioPlayer.androidAudioSessionId;
+      if (sessionId == null) return;
+      await _effectsChannel.invokeMethod<void>('configure', {
+        'sessionId': sessionId,
+        'equalizerEnabled': effectsEnabled,
+        'bands': bands.map((v) => ((v - 0.5) * 24).round()).toList(),
+        'bassEnabled': bassEnabled,
+        'bassStrength': (bass * 1000).round(),
+        'surroundEnabled': surroundEnabled,
+        'surroundStrength': (surroundWidth * 1000).round(),
+      });
+    } on PlatformException catch (e) {
+      if (mounted) setState(() => audioError = 'Efek audio tidak tersedia di perangkat ini: ${e.message ?? e.code}');
+    } catch (_) {
+      // Effects are applied when the native Android audio session is available.
+    }
+  }
+
+  Future<void> scanFolder() async {
+    try {
+      final folder = await FilePicker.platform.getDirectoryPath(
+        dialogTitle: 'Pilih folder musik untuk dipindai',
+      );
+      if (folder == null) return;
+      final found = <PlatformFile>[];
+      const extensions = {'.mp3', '.mp4', '.m4a', '.aac', '.wav', '.flac', '.ogg', '.opus'};
+      await for (final entity in Directory(folder).list(recursive: true, followLinks: false)) {
+        if (entity is! File) continue;
+        final name = entity.uri.pathSegments.isEmpty ? entity.path : entity.uri.pathSegments.last;
+        final dot = name.lastIndexOf('.');
+        if (dot < 0 || !extensions.contains(name.substring(dot).toLowerCase())) continue;
+        try {
+          final stat = await entity.stat();
+          found.add(PlatformFile(name: name, path: entity.path, size: stat.size, extension: name.substring(dot + 1).toLowerCase()));
+        } catch (_) {
+          // Skip files that become unavailable during scanning.
+        }
+      }
+      if (!mounted) return;
+      final known = localTracks.map((f) => f.path).toSet();
+      final fresh = found.where((f) => !known.contains(f.path)).toList();
+      setState(() {
+        localTracks.addAll(fresh);
+        audioError = found.isEmpty ? 'Tidak ditemukan file MP3/MP4 atau audio lain di folder tersebut.' : null;
+      });
+      if (localTracks.isNotEmpty && audioPlayer.audioSource == null) await playTrack(0);
+    } catch (e) {
+      if (mounted) setState(() => audioError = 'Gagal memindai folder: $e');
+    }
+  }
 
   Future<void> pickTracks() async {
     try {
@@ -80,6 +136,7 @@ class _PlayerShellState extends State<PlayerShell> {
       await audioPlayer.setFilePath(path);
       if (!mounted) return;
       setState(() { currentTrack = safeIndex; playing = true; audioError = null; });
+      await _applyAudioEffects();
       await audioPlayer.play();
     } catch (e) {
       if (mounted) setState(() => audioError = 'Gagal memutar audio: $e');
@@ -286,7 +343,7 @@ class _PlayerShellState extends State<PlayerShell> {
                       quarterTurns: 3,
                       child: Slider(
                         min: 0, max: 1, value: bands[i],
-                        onChanged: (v) => setState(() => bands[i] = v),
+                        onChanged: (v) { setState(() => bands[i] = v); _applyAudioEffects(); },
                       ),
                     ),
                   ),
@@ -310,10 +367,11 @@ class _PlayerShellState extends State<PlayerShell> {
                     s == 'Rock' ? [0.88, 0.78, 0.40, 0.68, 0.82, 0.86, 0.88] :
                     s == 'Vocal' ? [0.34, 0.42, 0.72, 0.88, 0.84, 0.68, 0.58] : [0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5];
                 for (var i = 0; i < bands.length; i++) { bands[i] = values[i]; }
+                _applyAudioEffects();
               }),
             )).toList()),
           const SizedBox(height: 20),
-          const _InfoNote('Design preview', 'Equalizer sliders and presets are UI controls in this design foundation. They do not yet process audio until connected to a playback engine and Android DSP effects.'),
+          const _InfoNote('Android audio effects', 'Equalizer, Bass Boost and Virtualizer use native Android audio effects when supported by the device. Availability depends on the Android audio engine and hardware.'),
         ],
       );
 
@@ -336,7 +394,7 @@ class _PlayerShellState extends State<PlayerShell> {
                 subtitle: const Text('Deep low-frequency emphasis'),
                 value: bassEnabled,
                 activeThumbColor: cyan,
-                onChanged: (v) => setState(() => bassEnabled = v),
+                onChanged: (v) { setState(() => bassEnabled = v); _applyAudioEffects(); },
               ),
               const SizedBox(height: 10),
               Container(
@@ -376,7 +434,7 @@ class _PlayerShellState extends State<PlayerShell> {
                 subtitle: const Text('Wider stereo soundstage'),
                 value: surroundEnabled,
                 activeThumbColor: cyan,
-                onChanged: (v) => setState(() => surroundEnabled = v),
+                onChanged: (v) { setState(() => surroundEnabled = v); _applyAudioEffects(); },
               ),
               const Icon(Icons.surround_sound_rounded, size: 72, color: violet),
               Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
@@ -396,7 +454,7 @@ class _PlayerShellState extends State<PlayerShell> {
                 title: const Text('Audio Effects', style: TextStyle(fontWeight: FontWeight.bold)),
                 value: effectsEnabled,
                 activeThumbColor: cyan,
-                onChanged: (v) => setState(() => effectsEnabled = v),
+                onChanged: (v) { setState(() => effectsEnabled = v); _applyAudioEffects(); },
               ),
               Row(children: [
                 _effectDial('Reverb', 30, violet),
@@ -437,10 +495,17 @@ class _PlayerShellState extends State<PlayerShell> {
       children: [
         Row(children: [
           const Expanded(child: _PageHeading('Your Library', 'Your music, your vibe')),
-          IconButton(
-            tooltip: 'Add music',
-            onPressed: pickTracks,
+          PopupMenuButton<String>(
+            tooltip: 'Add or scan music',
             icon: const Icon(Icons.add_circle_rounded, color: cyan, size: 30),
+            onSelected: (choice) {
+              if (choice == 'scan') scanFolder();
+              if (choice == 'files') pickTracks();
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(value: 'scan', child: ListTile(leading: Icon(Icons.folder_search_rounded), title: Text('Scan folder'), subtitle: Text('Find MP3 / MP4 and audio files'))),
+              PopupMenuItem(value: 'files', child: ListTile(leading: Icon(Icons.audio_file_rounded), title: Text('Choose files'))),
+            ],
           ),
         ]),
         const SizedBox(height: 18),
