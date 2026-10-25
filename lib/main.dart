@@ -48,7 +48,7 @@ class _PlayerShellState extends State<PlayerShell> {
   bool playing = false;
   bool bassEnabled = true;
   double bass = 0.72;
-  final bands = <double>[0.72, 0.58, 0.43, 0.50, 0.66];
+  final bands = <double>[0.72, 0.58, 0.43, 0.50, 0.66, 0.58, 0.72];
   final AudioPlayer audioPlayer = AudioPlayer();
   final List<PlatformFile> localTracks = <PlatformFile>[];
   int currentTrack = 0;
@@ -124,7 +124,7 @@ class _PlayerShellState extends State<PlayerShell> {
   }
 
   Widget _home() => ListView(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+        padding: const EdgeInsets.fromLTRB(16, 12, 16, 24),
         children: [
           Row(children: [
             Container(
@@ -132,42 +132,155 @@ class _PlayerShellState extends State<PlayerShell> {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(15),
                 gradient: const LinearGradient(colors: [cyan, violet, pink]),
+                boxShadow: [BoxShadow(color: violet.withValues(alpha: .25), blurRadius: 18)],
               ),
-              child: const Icon(Icons.graphic_eq_rounded, color: ink, size: 29),
+              child: const Icon(Icons.music_note_rounded, color: ink, size: 30),
             ),
             const SizedBox(width: 12),
             const Expanded(child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('ANDROID', style: TextStyle(fontSize: 12, letterSpacing: 3, color: cyan, fontWeight: FontWeight.w800)),
+                Text('ANDROID', style: TextStyle(fontSize: 11, letterSpacing: 3, color: cyan, fontWeight: FontWeight.w800)),
                 Text('Music Player', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
               ],
             )),
-            IconButton(onPressed: () {}, icon: const Icon(Icons.search_rounded)),
+            IconButton(onPressed: pickTracks, icon: const Icon(Icons.search_rounded)),
+            IconButton(onPressed: () => setState(() => tab = 2), icon: const Icon(Icons.tune_rounded, color: cyan)),
           ]),
-          const SizedBox(height: 28),
-          const Text('FEEL EVERY BEAT', style: TextStyle(color: cyan, letterSpacing: 2, fontSize: 11, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 5),
-          const Text('Your sound.\nYour rules.', style: TextStyle(fontSize: 34, height: 1.12, fontWeight: FontWeight.w900)),
-          const SizedBox(height: 18),
-          _visualizer(),
           const SizedBox(height: 20),
-          _nowPlaying(),
-          const SizedBox(height: 26),
-          const _SectionTitle('Quick sound controls', 'TUNE'),
+          Container(
+            padding: const EdgeInsets.all(17),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(22),
+              gradient: const LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: [Color(0xFF171D46), Color(0xFF160D2A), Color(0xFF071824)]),
+              border: Border.all(color: cyan.withValues(alpha: .25)),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              const Text('FEEL EVERY BEAT', style: TextStyle(color: cyan, letterSpacing: 2, fontSize: 10, fontWeight: FontWeight.bold)),
+              const SizedBox(height: 5),
+              const Text('Your sound. Your rules.', style: TextStyle(fontSize: 24, height: 1.1, fontWeight: FontWeight.w900)),
+              const SizedBox(height: 12),
+              SizedBox(height: 55, child: _visualizer()),
+              const SizedBox(height: 8),
+              const Row(children: [
+                Icon(Icons.equalizer_rounded, color: violet, size: 18), SizedBox(width: 5),
+                Text('POWERFUL EQ', style: TextStyle(fontSize: 9, letterSpacing: 1.1)),
+                SizedBox(width: 14),
+                Icon(Icons.speaker_rounded, color: cyan, size: 18), SizedBox(width: 5),
+                Text('SUPER BASS', style: TextStyle(fontSize: 9, letterSpacing: 1.1)),
+              ]),
+            ]),
+          ),
+          const SizedBox(height: 16),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(children: [
+              _libraryPill(Icons.music_note_rounded, 'Songs', true, () => setState(() => tab = 3)),
+              _libraryPill(Icons.album_rounded, 'Albums', false, () => setState(() => tab = 3)),
+              _libraryPill(Icons.person_rounded, 'Artists', false, () => setState(() => tab = 3)),
+              _libraryPill(Icons.folder_rounded, 'Folders', false, () => setState(() => tab = 3)),
+            ]),
+          ),
+          const SizedBox(height: 22),
+          const _SectionTitle('Recently Played', 'SEE ALL'),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 142,
+            child: ListView(scrollDirection: Axis.horizontal, children: [
+              _albumCard('The Journey', 'Wins', Icons.wb_twilight_rounded, [const Color(0xFFFF8A45), violet]),
+              _albumCard('Electric Storm', 'Wins', Icons.bolt_rounded, [const Color(0xFF087CFF), violet]),
+              _albumCard('Ujian Hidup', 'Wins', Icons.nightlight_round, [const Color(0xFF126D9B), const Color(0xFF172344)]),
+              _albumCard('Ranah Minang', 'Wins', Icons.waves_rounded, [const Color(0xFF13B8A6), const Color(0xFF14335C)]),
+            ]),
+          ),
+          const SizedBox(height: 22),
+          const _SectionTitle('Playlists', 'SEE ALL'),
           const SizedBox(height: 12),
           Row(children: [
-            Expanded(child: _featureCard(Icons.equalizer_rounded, 'Equalizer', '5-band tuning', violet, () => setState(() => tab = 1))),
-            const SizedBox(width: 12),
-            Expanded(child: _featureCard(Icons.speaker_rounded, 'Super Bass', 'Deep low end', cyan, () => setState(() => tab = 2))),
+            Expanded(child: _playlistCard('Favorites', '42 songs', Icons.favorite_rounded, pink)),
+            const SizedBox(width: 10),
+            Expanded(child: _playlistCard('Rock', '68 songs', Icons.music_video_rounded, violet)),
+            const SizedBox(width: 10),
+            Expanded(child: _playlistCard('Electronic', '54 songs', Icons.graphic_eq_rounded, cyan)),
           ]),
-          const SizedBox(height: 24),
-          const _SectionTitle('Recently played', 'VIEW ALL'),
-          const SizedBox(height: 12),
-          _track('Electric Storm', 'Wins', Icons.bolt_rounded, violet),
-          _track('The Best Thing in My Life', 'Wins', Icons.nightlight_round, pink),
-          _track('Ranah Minang Tacinto', 'Wins', Icons.waves_rounded, cyan),
+          const SizedBox(height: 22),
+          const _SectionTitle('Now Playing', 'OPEN PLAYER'),
+          const SizedBox(height: 10),
+          _nowPlaying(),
+          if (audioError != null) ...[
+            const SizedBox(height: 10),
+            _InfoNote('Playback message', audioError!),
+          ],
         ],
+      );
+
+  Widget _libraryPill(IconData icon, String label, bool selected, VoidCallback onTap) =>
+      Padding(
+        padding: const EdgeInsets.only(right: 8),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            decoration: BoxDecoration(
+              color: selected ? violet.withValues(alpha: .2) : panel,
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: selected ? violet : Colors.white10),
+            ),
+            child: Row(children: [
+              Icon(icon, size: 17, color: selected ? cyan : Colors.white70),
+              const SizedBox(width: 7),
+              Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            ]),
+          ),
+        ),
+      );
+
+  Widget _albumCard(String title, String artist, IconData icon, List<Color> colors) =>
+      Container(
+        width: 112,
+        margin: const EdgeInsets.only(right: 11),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Expanded(
+            child: Container(
+              width: 112,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(15),
+                gradient: LinearGradient(begin: Alignment.topLeft, end: Alignment.bottomRight, colors: colors),
+                border: Border.all(color: Colors.white12),
+              ),
+              child: Stack(children: [
+                Positioned(right: -8, bottom: -12, child: Icon(icon, size: 80, color: Colors.white.withValues(alpha: .16))),
+                Center(child: Icon(icon, size: 37, color: Colors.white)),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 7),
+          Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+          Text(artist, style: const TextStyle(fontSize: 10, color: Colors.white54)),
+        ]),
+      );
+
+  Widget _playlistCard(String title, String count, IconData icon, Color color) =>
+      Expanded(
+        child: InkWell(
+          onTap: () => setState(() => tab = 3),
+          borderRadius: BorderRadius.circular(15),
+          child: Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: panel,
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: color.withValues(alpha: .25)),
+            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Icon(icon, color: color, size: 27),
+              const SizedBox(height: 10),
+              Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+              Text(count, style: const TextStyle(fontSize: 9, color: Colors.white54)),
+            ]),
+          ),
+        ),
       );
 
   Widget _visualizer() => Container(
@@ -262,7 +375,7 @@ class _PlayerShellState extends State<PlayerShell> {
             child: Row(
               children: List.generate(5, (i) => Expanded(
                 child: Column(children: [
-                  Text(['+6', '+3', '0', '+3', '+6'][i], style: const TextStyle(color: cyan, fontSize: 11)),
+                  Text(['+6', '+4', '+2', '0', '+2', '+4', '+6'][i], style: const TextStyle(color: cyan, fontSize: 11)),
                   SizedBox(
                     height: 230,
                     child: RotatedBox(
@@ -273,7 +386,7 @@ class _PlayerShellState extends State<PlayerShell> {
                       ),
                     ),
                   ),
-                  Text(['60 Hz', '230 Hz', '910 Hz', '3.6 kHz', '14 kHz'][i],
+                  Text(['60', '230', '910', '3.6k', '7k', '14k', '16k'][i],
                     style: const TextStyle(fontSize: 10, color: Colors.white70)),
                 ]),
               )),
