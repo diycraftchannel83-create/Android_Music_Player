@@ -1,4 +1,4 @@
-name: Build Android Music Player APK
+name: Build SonicMaster Audio APK
 
 on:
   push:
@@ -133,8 +133,8 @@ jobs:
         shell: bash
         run: |
           MANIFEST="android/app/src/main/AndroidManifest.xml"
-          sed -i 's/android:label="android_music_player"/android:label="Android Music Player"/' "$MANIFEST"
-          grep -q 'android:label="Android Music Player"' "$MANIFEST"
+          sed -i 's/android:label="android_music_player"/android:label="SonicMaster Audio"/' "$MANIFEST"
+          grep -q 'android:label="SonicMaster Audio"' "$MANIFEST"
       - name: Flutter dependencies
         run: flutter pub get
       - name: Analyze
@@ -148,6 +148,6 @@ jobs:
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: android-music-player-release
+          name: sonicmaster-audio-release
           path: build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
