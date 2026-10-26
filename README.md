@@ -1,17 +1,13 @@
-# Android Music Player
+# SonicMaster Audio
 
-A dark, premium-style Flutter Android music player concept focused on powerful audio controls, a vivid animated equalizer aesthetic, and Super Bass.
+SonicMaster Audio is a Flutter-based Android music player with a premium dark interface and local audio playback.
 
-## Design direction
-- AMOLED-friendly dark interface with cyan, blue, violet, and magenta accents.
-- Home library with songs, albums, artists, playlists, and favourites.
-- Now Playing screen with artwork, progress, and transport controls.
-- Dedicated Equalizer screen with adjustable frequency bands and audio presets.
-- Super Bass and sound-effects controls, designed to map to Android audio effects in the playback implementation.
-- Responsive Material 3 components.
-
-## Current status
-This commit establishes the Android Music Player branding and UI direction. It is a design foundation, not yet a complete audio engine: local media scanning, real playback/background controls, and DSP-backed equalizer/bass processing must be implemented and tested before describing those effects as active.
+## Brand direction
+- Product name: **SonicMaster Audio**
+- Tagline: **Feel Every Beat.**
+- Visual identity: AMOLED-friendly dark surfaces with cyan, blue, violet, and magenta accents.
+- Audio controls: equalizer, bass boost, and surround/virtualizer effects where supported by the Android device.
+- Local library: choose audio files or scan a folder for supported media.
 
 ## Build
 ```sh
@@ -19,6 +15,9 @@ flutter pub get
 flutter analyze
 flutter test
 flutter build apk --release
-``
+```
 
 APK output: `build/app/outputs/flutter-apk/app-release.apk`.
+
+## Release signing
+For signed release builds, store the keystore and credentials only in GitHub Actions Secrets. Never commit `.jks`, private keys, or passwords to this public repository. Keep the same signing identity for updates to an existing app listing.
