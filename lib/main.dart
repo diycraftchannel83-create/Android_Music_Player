@@ -202,7 +202,7 @@ class _PlayerShellState extends State<PlayerShell> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('ANDROID', style: TextStyle(fontSize: 11, letterSpacing: 3, color: cyan, fontWeight: FontWeight.w800)),
-                Text('Music Player', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
+                Text('SonicMaster Audio', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w900)),
               ],
             )),
             IconButton(onPressed: pickTracks, icon: const Icon(Icons.search_rounded)),
