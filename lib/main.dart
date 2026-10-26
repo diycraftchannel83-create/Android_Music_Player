@@ -17,7 +17,7 @@ class AndroidMusicPlayerApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => MaterialApp(
-        title: 'Android Music Player',
+        title: 'SonicMaster Audio',
         debugShowCheckedModeBanner: false,
         theme: ThemeData(
           useMaterial3: true,
