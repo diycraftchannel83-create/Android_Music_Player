@@ -266,6 +266,25 @@ class _PlayerShellState extends State<PlayerShell> with SingleTickerProviderStat
                 Icon(Icons.speaker_rounded, color: cyan, size: 18), SizedBox(width: 5),
                 Text('SUPER BASS', style: TextStyle(fontSize: 9, letterSpacing: 1.1)),
               ]),
+              const SizedBox(height: 14),
+              Row(
+                children: [
+                  const Expanded(
+                    child: Text('NOW PLAYING', style: TextStyle(
+                      color: cyan, fontSize: 10, letterSpacing: 1.8,
+                      fontWeight: FontWeight.w800,
+                    )),
+                  ),
+                  TextButton(
+                    onPressed: () => setState(() => tab = 3),
+                    child: const Text('OPEN PLAYER', style: TextStyle(
+                      fontSize: 9, letterSpacing: 1.1,
+                    )),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              _nowPlaying(),
             ]),
           ),
           const SizedBox(height: 16),
@@ -300,10 +319,6 @@ class _PlayerShellState extends State<PlayerShell> with SingleTickerProviderStat
             const SizedBox(width: 10),
             Expanded(child: _playlistCard('Electronic', '54 songs', Icons.graphic_eq_rounded, cyan)),
           ]),
-          const SizedBox(height: 22),
-          const _SectionTitle('Now Playing', 'OPEN PLAYER'),
-          const SizedBox(height: 10),
-          _nowPlaying(),
           if (audioError != null) ...[
             const SizedBox(height: 10),
             _InfoNote('Playback message', audioError!),
