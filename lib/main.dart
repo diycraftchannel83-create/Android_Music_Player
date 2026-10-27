@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
@@ -45,7 +46,7 @@ class PlayerShell extends StatefulWidget {
   State<PlayerShell> createState() => _PlayerShellState();
 }
 
-class _PlayerShellState extends State<PlayerShell> {
+class _PlayerShellState extends State<PlayerShell> with SingleTickerProviderStateMixin {
   int tab = 0;
   bool playing = false;
   bool bassEnabled = true;
@@ -55,6 +56,7 @@ class _PlayerShellState extends State<PlayerShell> {
   double bass = 0.72;
   final bands = <double>[0.72, 0.58, 0.43, 0.50, 0.66, 0.58, 0.72];
   final AudioPlayer audioPlayer = AudioPlayer();
+  late final AnimationController _visualizerController = AnimationController(vsync: this, duration: const Duration(milliseconds: 900))..repeat();
   static const MethodChannel _effectsChannel = MethodChannel('android_music_player/audio_effects');
   final List<PlatformFile> localTracks = <PlatformFile>[];
   int currentTrack = 0;
@@ -155,7 +157,7 @@ class _PlayerShellState extends State<PlayerShell> {
   }
 
   @override
-  void dispose() { audioPlayer.dispose(); super.dispose(); }
+  void dispose() { _visualizerController.dispose(); audioPlayer.dispose(); super.dispose(); }
 
   @override
   Widget build(BuildContext context) {
@@ -221,7 +223,41 @@ class _PlayerShellState extends State<PlayerShell> {
               const SizedBox(height: 5),
               const Text('Your sound. Your rules.', style: TextStyle(fontSize: 24, height: 1.1, fontWeight: FontWeight.w900)),
               const SizedBox(height: 12),
-              SizedBox(height: 48, child: Row(crossAxisAlignment: CrossAxisAlignment.end, mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: List.generate(25, (i) => Container(width: 4, height: 10 + ((i * 17 + 11) % 38).toDouble(), decoration: BoxDecoration(borderRadius: BorderRadius.circular(5), gradient: const LinearGradient(begin: Alignment.bottomCenter, end: Alignment.topCenter, colors: [cyan, violet, pink])))))),
+              SizedBox(
+                height: 48,
+                child: StreamBuilder<PlayerState>(
+                  stream: audioPlayer.playerStateStream,
+                  builder: (context, snapshot) {
+                    final active = snapshot.data?.playing ?? false;
+                    if (active && !_visualizerController.isAnimating) _visualizerController.repeat();
+                    if (!active && _visualizerController.isAnimating) _visualizerController.stop();
+                    return AnimatedBuilder(
+                      animation: _visualizerController,
+                      builder: (context, _) => Row(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: List.generate(25, (i) {
+                          final phase = (_visualizerController.value * 2 * 3.141592653589793) + (i * 0.71);
+                          final wave = active ? (0.5 + 0.5 * (0.65 * math.sin(phase) + 0.35 * math.sin(phase * 1.7 + i))) : 0.12;
+                          final height = active ? 7 + wave * 39 : 5 + ((i * 7) % 7);
+                          return Container(
+                            width: 4,
+                            height: height.toDouble(),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(5),
+                              gradient: const LinearGradient(
+                                begin: Alignment.bottomCenter,
+                                end: Alignment.topCenter,
+                                colors: [cyan, violet, pink],
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    );
+                  },
+                ),
+              ),
               const SizedBox(height: 8),
               const Row(children: [
                 Icon(Icons.equalizer_rounded, color: violet, size: 18), SizedBox(width: 5),
